@@ -38,7 +38,6 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Date;
-import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -67,12 +66,18 @@ import javax.xml.transform.stream.StreamResult;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.log4j.Appender;
-import org.apache.log4j.FileAppender;
-import org.apache.log4j.Level;
-import org.apache.log4j.Logger;
-import org.apache.log4j.PatternLayout;
-import org.apache.log4j.RollingFileAppender;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.Appender;
+import org.apache.logging.log4j.core.Logger;
+import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.appender.RollingFileAppender;
+import org.apache.logging.log4j.core.appender.rolling.CompositeTriggeringPolicy;
+import org.apache.logging.log4j.core.appender.rolling.DefaultRolloverStrategy;
+import org.apache.logging.log4j.core.appender.rolling.OnStartupTriggeringPolicy;
+import org.apache.logging.log4j.core.appender.rolling.SizeBasedTriggeringPolicy;
+import org.apache.logging.log4j.core.config.LoggerConfig;
+import org.apache.logging.log4j.core.layout.PatternLayout;
 import org.openmrs.Cohort;
 import org.openmrs.Concept;
 import org.openmrs.ConceptNumeric;
@@ -86,6 +91,7 @@ import org.openmrs.ProgramWorkflowState;
 import org.openmrs.User;
 import org.openmrs.annotation.AddOnStartup;
 import org.openmrs.annotation.HasAddOnStartupPrivileges;
+import org.openmrs.annotation.Logging;
 import org.openmrs.api.APIException;
 import org.openmrs.api.AdministrationService;
 import org.openmrs.api.ConceptService;
@@ -273,9 +279,9 @@ public class OpenmrsUtil {
 	 * @param inputStream Stream to copy from
 	 * @param outputStream Stream/location to copy to
 	 * @throws IOException thrown if an error occurs during read/write
-	 * @should not copy the outputstream if outputstream is null
-	 * @should not copy the outputstream if inputstream is null
-	 * @should copy inputstream to outputstream and close the outputstream
+	 * <strong>Should</strong> not copy the outputstream if outputstream is null
+	 * <strong>Should</strong> not copy the outputstream if inputstream is null
+	 * <strong>Should</strong> copy inputstream to outputstream and close the outputstream
 	 */
 	public static void copyFile(InputStream inputStream, OutputStream outputStream) throws IOException {
 		
@@ -475,11 +481,11 @@ public class OpenmrsUtil {
 			val = OpenmrsConstants.DATABASE_NAME;
 		}
 		OpenmrsConstants.DATABASE_BUSINESS_NAME = val;
-		
+
+		setupLogAppenders();
+
 		// set global log level
 		applyLogLevels();
-		
-		setupLogAppenders();
 	}
 	
 	/**
@@ -487,60 +493,81 @@ public class OpenmrsUtil {
 	 * OpenmrsConstants.GLOBAL_PROPERTY_LOG_LEVEL ) exists. Valid values for global property are
 	 * trace, debug, info, warn, error or fatal.
 	 */
+	@Logging(ignore = true)
 	public static void applyLogLevels() {
 		AdministrationService adminService = Context.getAdministrationService();
 		String logLevel = adminService.getGlobalProperty(OpenmrsConstants.GLOBAL_PROPERTY_LOG_LEVEL, "");
-		
+
+		// reload the configuration from disk
+		LoggerContext context = ((Logger) LogManager.getRootLogger()).getContext();
+		context.reconfigure();
+
 		String[] levels = logLevel.split(",");
 		for (String level : levels) {
 			String[] classAndLevel = level.split(":");
-			if (classAndLevel.length == 1) {
-				applyLogLevel(OpenmrsConstants.LOG_CLASS_DEFAULT, logLevel);
+			if (classAndLevel.length == 0) {
+				return;
+			} else if (classAndLevel.length == 1) {
+				applyLogLevel(OpenmrsConstants.LOG_CLASS_DEFAULT, classAndLevel[0].trim());
 			} else {
 				applyLogLevel(classAndLevel[0].trim(), classAndLevel[1].trim());
 			}
 		}
 	}
-	
+
 	/**
 	 * Setup root level log appenders.
-	 * 
+	 *
 	 * @since 1.9.2
 	 */
 	public static void setupLogAppenders() {
-		Logger rootLogger = Logger.getRootLogger();
-		
-		FileAppender fileAppender = null;
-		@SuppressWarnings("rawtypes")
-		Enumeration appenders = rootLogger.getAllAppenders();
-		while (appenders.hasMoreElements()) {
-			Appender appender = (Appender) appenders.nextElement();
-			if (OpenmrsConstants.LOG_OPENMRS_FILE_APPENDER.equals(appender.getName())) {
-				fileAppender = (FileAppender) appender; //the appender already exists
+		Logger rootLogger = (Logger) LogManager.getRootLogger();
+		LoggerContext loggerContext = rootLogger.getContext();
+
+		// stop the LoggerContext to reconfigure the scanning interval
+		loggerContext.stop();
+		// previously set in web.xml
+		loggerContext.getConfiguration().getWatchManager().setIntervalSeconds(60000);
+		loggerContext.start();
+
+		RollingFileAppender fileAppender = null;
+		for (Map.Entry<String, Appender> appenderEntry : rootLogger.getAppenders().entrySet()) {
+			Appender appender = appenderEntry.getValue();
+			if (appender instanceof RollingFileAppender && OpenmrsConstants.LOG_OPENMRS_FILE_APPENDER
+				.equals(appender.getName())) {
+				fileAppender = (RollingFileAppender) appender;
 				break;
 			}
 		}
-		
+
+		if (fileAppender != null) {
+			rootLogger.removeAppender(fileAppender);
+		}
+
 		String logLayout = Context.getAdministrationService().getGlobalProperty(OpenmrsConstants.GP_LOG_LAYOUT,
-		    "%p - %C{1}.%M(%L) |%d{ISO8601}| %m%n");
-		PatternLayout patternLayout = new PatternLayout(logLayout);
-		
-		String logLocation = null;
-		try {
-			logLocation = OpenmrsUtil.getOpenmrsLogLocation();
-			if (fileAppender == null) {
-				fileAppender = new RollingFileAppender(patternLayout, logLocation);
-				fileAppender.setName(OpenmrsConstants.LOG_OPENMRS_FILE_APPENDER);
-				rootLogger.addAppender(fileAppender);
-			} else {
-				fileAppender.setFile(logLocation);
-				fileAppender.setLayout(patternLayout);
-			}
-			fileAppender.activateOptions();
-		}
-		catch (IOException e) {
-			log.error("Error while setting an OpenMRS log file to " + logLocation, e);
-		}
+			"%p - %C{1}.%M(%L) |%d{ISO8601}| %m%n");
+		PatternLayout patternLayout = PatternLayout.newBuilder()
+			.withPattern(logLayout)
+			.build();
+
+		String logLocation = OpenmrsUtil.getOpenmrsLogLocation();
+		String logPattern = logLocation.replace(".log", ".%i.log");
+		fileAppender = RollingFileAppender.newBuilder()
+			.setLayout(patternLayout)
+			.withFileName(logLocation)
+			.withFilePattern(logPattern)
+			.setName(OpenmrsConstants.LOG_OPENMRS_FILE_APPENDER)
+			.withPolicy(CompositeTriggeringPolicy.createPolicy(
+				OnStartupTriggeringPolicy.createPolicy(1),
+				SizeBasedTriggeringPolicy.createPolicy("10MB")
+			))
+			.withStrategy(DefaultRolloverStrategy.newBuilder().withMax("1").build())
+			.build();
+		fileAppender.start();
+		rootLogger.addAppender(fileAppender);
+
+		// update the logger configuration
+		loggerContext.updateLoggers();
 	}
 	
 	/**
@@ -559,25 +586,37 @@ public class OpenmrsUtil {
 				logClass = OpenmrsConstants.LOG_CLASS_DEFAULT;
 			}
 			
-			Logger logger = Logger.getLogger(logClass);
+			// DO NOT USE LogManager#getContext() here as the will reset the logger context
+			LoggerContext context = ((Logger) LogManager.getRootLogger()).getContext();
+			LoggerConfig configuration = context.getConfiguration().getLoggerConfig(logClass);
 			
 			logLevel = logLevel.toLowerCase();
-			if (OpenmrsConstants.LOG_LEVEL_TRACE.equals(logLevel)) {
-				logger.setLevel(Level.TRACE);
-			} else if (OpenmrsConstants.LOG_LEVEL_DEBUG.equals(logLevel)) {
-				logger.setLevel(Level.DEBUG);
-			} else if (OpenmrsConstants.LOG_LEVEL_INFO.equals(logLevel)) {
-				logger.setLevel(Level.INFO);
-			} else if (OpenmrsConstants.LOG_LEVEL_WARN.equals(logLevel)) {
-				logger.setLevel(Level.WARN);
-			} else if (OpenmrsConstants.LOG_LEVEL_ERROR.equals(logLevel)) {
-				logger.setLevel(Level.ERROR);
-			} else if (OpenmrsConstants.LOG_LEVEL_FATAL.equals(logLevel)) {
-				logger.setLevel(Level.FATAL);
-			} else {
-				log.warn("Global property " + logLevel + " is invalid. "
-				        + "Valid values are trace, debug, info, warn, error or fatal");
+			switch (logLevel) {
+				case OpenmrsConstants.LOG_LEVEL_TRACE:
+					configuration.setLevel(Level.TRACE);
+					break;
+				case OpenmrsConstants.LOG_LEVEL_DEBUG:
+					configuration.setLevel(Level.DEBUG);
+					break;
+				case OpenmrsConstants.LOG_LEVEL_INFO:
+					configuration.setLevel(Level.INFO);
+					break;
+				case OpenmrsConstants.LOG_LEVEL_WARN:
+					configuration.setLevel(Level.WARN);
+					break;
+				case OpenmrsConstants.LOG_LEVEL_ERROR:
+					configuration.setLevel(Level.ERROR);
+					break;
+				case OpenmrsConstants.LOG_LEVEL_FATAL:
+					configuration.setLevel(Level.FATAL);
+					break;
+				default:
+					log.warn("Log level {} is invalid. " +
+						"Valid values are trace, debug, info, warn, error or fatal", logLevel);
+					break;
 			}
+
+			context.updateLoggers();
 		}
 	}
 	
@@ -948,7 +987,7 @@ public class OpenmrsUtil {
 	 * 
 	 * @param url an URL
 	 * @return file object for given URL or <code>null</code> if URL is not local
-	 * @should return null given null parameter
+	 * <strong>Should</strong> return null given null parameter
 	 */
 	public static File url2file(final URL url) {
 		if (url == null || !"file".equalsIgnoreCase(url.getProtocol())) {
@@ -1121,14 +1160,14 @@ public class OpenmrsUtil {
 	}
 	
 	/**
-	 * Checks whether the current JVM version is at least Java 6.
+	 * Checks whether the current JVM version is at least Java 8.
 	 * 
-	 * @throws ApplicationContextException if the current JVM version is earlier than Java 6
+	 * @throws ApplicationContextException if the current JVM version is earlier than Java 8
 	 */
 	public static void validateJavaVersion() {
-		// check whether the current JVM version is at least Java 6
-		if (JdkVersion.getJavaVersion().matches("1.(0|1|2|3|4|5).(.*)")) {
-			throw new APIException("OpenMRS requires Java 6, but is running under " + JdkVersion.getJavaVersion());
+		// check whether the current JVM version is at least Java 8
+		if (JdkVersion.getJavaVersion().matches("1.(0|1|2|3|4|5|6|7).(.*)")) {
+			throw new APIException("OpenMRS requires Java 8 and above, but is running under " + JdkVersion.getJavaVersion());
 		}
 	}
 	
@@ -1322,8 +1361,8 @@ public class OpenmrsUtil {
 	 * locale.
 	 * 
 	 * @return a simple date format
-	 * @should return a pattern with four y characters in it
-	 * @should not allow the returned SimpleDateFormat to be modified
+	 * <strong>Should</strong> return a pattern with four y characters in it
+	 * <strong>Should</strong> not allow the returned SimpleDateFormat to be modified
 	 * @since 1.5
 	 */
 	public static SimpleDateFormat getDateFormat(Locale locale) {
@@ -1338,7 +1377,12 @@ public class OpenmrsUtil {
 		
 		if (!pattern.contains("yyyy")) {
 			// otherwise, change the pattern to be a four digit year
-			pattern = pattern.replaceFirst("yy", "yyyy");
+			String regex = "yy";
+			if (!pattern.contains("yy")) {
+				//Java 11 has dd/MM/y instead of dd/MM/yy
+				regex = "y";
+			}
+			pattern = pattern.replaceFirst(regex, "yyyy");
 			sdf.applyPattern(pattern);
 		}
 		if (!pattern.contains("MM")) {
@@ -1361,8 +1405,8 @@ public class OpenmrsUtil {
 	 * Get the current user's time format Will look similar to "hh:mm a". Depends on user's locale.
 	 * 
 	 * @return a simple time format
-	 * @should return a pattern with two h characters in it
-	 * @should not allow the returned SimpleDateFormat to be modified
+	 * <strong>Should</strong> return a pattern with two h characters in it
+	 * <strong>Should</strong> not allow the returned SimpleDateFormat to be modified
 	 * @since 1.9
 	 */
 	public static SimpleDateFormat getTimeFormat(Locale locale) {
@@ -1389,8 +1433,8 @@ public class OpenmrsUtil {
 	 * user's locale.
 	 * 
 	 * @return a simple date format
-	 * @should return a pattern with four y characters and two h characters in it
-	 * @should not allow the returned SimpleDateFormat to be modified
+	 * <strong>Should</strong> return a pattern with four y characters and two h characters in it
+	 * <strong>Should</strong> not allow the returned SimpleDateFormat to be modified
 	 * @since 1.9
 	 */
 	public static SimpleDateFormat getDateTimeFormat(Locale locale) {
@@ -1509,8 +1553,8 @@ public class OpenmrsUtil {
 	 * @param objects collection to loop over
 	 * @param obj Object to look for in the <code>objects</code>
 	 * @return true/false whether the given object is found
-	 * @should use equals method for comparison instead of compareTo given List collection
-	 * @should use equals method for comparison instead of compareTo given SortedSet collection
+	 * <strong>Should</strong> use equals method for comparison instead of compareTo given List collection
+	 * <strong>Should</strong> use equals method for comparison instead of compareTo given SortedSet collection
 	 */
 	public static boolean collectionContains(Collection<?> objects, Object obj) {
 		if (obj == null || objects == null) {
@@ -1669,7 +1713,7 @@ public class OpenmrsUtil {
 	 * Reader/Writer object as an argument, making this method unnecessary.
 	 * 
 	 * @param props the properties object to write into
-	 * @param input the input stream to read from
+	 * @param inputStream the input stream to read from
 	 */
 	public static void loadProperties(Properties props, InputStream inputStream) {
 		InputStreamReader reader = null;
@@ -1785,29 +1829,29 @@ public class OpenmrsUtil {
 	 * @param systemId system id of the user with password to be validated
 	 * @throws PasswordException
 	 * @since 1.5
-	 * @should fail with short password by default
-	 * @should fail with short password if not allowed
-	 * @should pass with short password if allowed
-	 * @should fail with digit only password by default
-	 * @should fail with digit only password if not allowed
-	 * @should pass with digit only password if allowed
-	 * @should fail with char only password by default
-	 * @should fail with char only password if not allowed
-	 * @should pass with char only password if allowed
-	 * @should fail without both upper and lower case password by default
-	 * @should fail without both upper and lower case password if not allowed
-	 * @should pass without both upper and lower case password if allowed
-	 * @should fail with password equals to user name by default
-	 * @should fail with password equals to user name if not allowed
-	 * @should pass with password equals to user name if allowed
-	 * @should fail with password equals to system id by default
-	 * @should fail with password equals to system id if not allowed
-	 * @should pass with password equals to system id if allowed
-	 * @should fail with password not matching configured regex
-	 * @should pass with password matching configured regex
-	 * @should allow password to contain non alphanumeric characters
-	 * @should allow password to contain white spaces
-	 * @should still work without an open session
+	 * <strong>Should</strong> fail with short password by default
+	 * <strong>Should</strong> fail with short password if not allowed
+	 * <strong>Should</strong> pass with short password if allowed
+	 * <strong>Should</strong> fail with digit only password by default
+	 * <strong>Should</strong> fail with digit only password if not allowed
+	 * <strong>Should</strong> pass with digit only password if allowed
+	 * <strong>Should</strong> fail with char only password by default
+	 * <strong>Should</strong> fail with char only password if not allowed
+	 * <strong>Should</strong> pass with char only password if allowed
+	 * <strong>Should</strong> fail without both upper and lower case password by default
+	 * <strong>Should</strong> fail without both upper and lower case password if not allowed
+	 * <strong>Should</strong> pass without both upper and lower case password if allowed
+	 * <strong>Should</strong> fail with password equals to user name by default
+	 * <strong>Should</strong> fail with password equals to user name if not allowed
+	 * <strong>Should</strong> pass with password equals to user name if allowed
+	 * <strong>Should</strong> fail with password equals to system id by default
+	 * <strong>Should</strong> fail with password equals to system id if not allowed
+	 * <strong>Should</strong> pass with password equals to system id if allowed
+	 * <strong>Should</strong> fail with password not matching configured regex
+	 * <strong>Should</strong> pass with password matching configured regex
+	 * <strong>Should</strong> allow password to contain non alphanumeric characters
+	 * <strong>Should</strong> allow password to contain white spaces
+	 * <strong>Should</strong> still work without an open session
 	 */
 	public static void validatePassword(String username, String password, String systemId) throws PasswordException {
 		
@@ -1891,9 +1935,9 @@ public class OpenmrsUtil {
 	/**
 	 * @param test the string to test
 	 * @return true if the passed string contains both upper and lower case characters
-	 * @should return true if string contains upper and lower case
-	 * @should return false if string does not contain lower case characters
-	 * @should return false if string does not contain upper case characters
+	 * <strong>Should</strong> return true if string contains upper and lower case
+	 * <strong>Should</strong> return false if string does not contain lower case characters
+	 * <strong>Should</strong> return false if string does not contain upper case characters
 	 */
 	public static boolean containsUpperAndLowerCase(String test) {
 		if (test != null) {
@@ -1907,8 +1951,8 @@ public class OpenmrsUtil {
 	/**
 	 * @param test the string to test
 	 * @return true if the passed string contains only numeric characters
-	 * @should return true if string contains only digits
-	 * @should return false if string contains any non-digits
+	 * <strong>Should</strong> return true if string contains only digits
+	 * <strong>Should</strong> return false if string contains any non-digits
 	 */
 	public static boolean containsOnlyDigits(String test) {
 		if (test != null) {
@@ -1924,8 +1968,8 @@ public class OpenmrsUtil {
 	/**
 	 * @param test the string to test
 	 * @return true if the passed string contains any numeric characters
-	 * @should return true if string contains any digits
-	 * @should return false if string contains no digits
+	 * <strong>Should</strong> return true if string contains any digits
+	 * <strong>Should</strong> return false if string contains no digits
 	 */
 	public static boolean containsDigit(String test) {
 		if (test != null) {
@@ -1961,8 +2005,8 @@ public class OpenmrsUtil {
 	 * 
 	 * @param stackTrace original stack trace from an error
 	 * @return shortened stack trace
-	 * @should return null if stackTrace is null
-	 * @should remove springframework and reflection related lines
+	 * <strong>Should</strong> return null if stackTrace is null
+	 * <strong>Should</strong> remove springframework and reflection related lines
 	 * @since 1.7
 	 */
 	public static String shortenedStackTrace(String stackTrace) {
@@ -2133,8 +2177,8 @@ public class OpenmrsUtil {
 	 * @param s1 the string to compare
 	 * @param s2 the string to compare
 	 * @return true if strings are equal (ignoring case)
-	 * @should return false if only one of the strings is null
-	 * @should be case insensitive
+	 * <strong>Should</strong> return false if only one of the strings is null
+	 * <strong>Should</strong> be case insensitive
 	 * @since 1.8
 	 */
 	public static boolean nullSafeEqualsIgnoreCase(String s1, String s2) {

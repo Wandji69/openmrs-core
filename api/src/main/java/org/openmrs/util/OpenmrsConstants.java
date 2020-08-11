@@ -165,7 +165,8 @@ public final class OpenmrsConstants {
 	 * The name of the runtime property that a user can set that will specify where openmrs's
 	 * application directory is
 	 * 
-	 * @see #APPLICATION_DATA_DIRECTORY
+	 * @see OpenmrsUtil#getApplicationDataDirectory()
+	 * @see OpenmrsUtil#startup(java.util.Properties)
 	 */
 	public static final String APPLICATION_DATA_DIRECTORY_RUNTIME_PROPERTY = "application_data_directory";
 	
@@ -338,6 +339,8 @@ public final class OpenmrsConstants {
 	public static final String GLOBAL_PROPERTY_PATIENT_SEARCH_MATCH_ANYWHERE = "ANYWHERE";
 	
 	public static final String GLOBAL_PROPERTY_PATIENT_SEARCH_MATCH_START = "START";
+	
+	public static final String GLOBAL_PROPERTY_PATIENT_SEARCH_MATCH_SOUNDEX = "SOUNDEX";
 	
 	public static final String GLOBAL_PROPERTY_PROVIDER_SEARCH_MATCH_MODE = "providerSearch.matchMode";
 	
@@ -818,7 +821,7 @@ public final class OpenmrsConstants {
 		        .add(new GlobalProperty(
 		                GLOBAL_PROPERTY_LOG_LEVEL,
 		                "org.openmrs.api:" + LOG_LEVEL_INFO,
-		                "Logging levels for log4j.xml. Valid format is class:level,class:level. If class not specified, 'org.openmrs.api' presumed. Valid levels are trace, debug, info, warn, error or fatal"));
+		                "Logging levels for log4j2.xml. Valid format is class:level,class:level. If class not specified, 'org.openmrs.api' presumed. Valid levels are trace, debug, info, warn, error or fatal"));
 		
 		props.add(new GlobalProperty(GP_LOG_LOCATION, "",
 		        "A directory where the OpenMRS log file appender is stored. The log file name is 'openmrs.log'."));

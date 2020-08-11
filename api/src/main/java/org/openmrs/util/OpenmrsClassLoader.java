@@ -84,9 +84,7 @@ public class OpenmrsClassLoader extends URLClassLoader {
 		
 		OpenmrsClassLoaderHolder.INSTANCE = this;
 		
-		if (log.isDebugEnabled()) {
-			log.debug("Creating new OpenmrsClassLoader instance with parent: {}", parent);
-		}
+		log.debug("Creating new OpenmrsClassLoader instance with parent: {}", parent);
 		
 		//disable caching so the jars aren't locked
 		//if performance is effected, this can be disabled in favor of
@@ -131,14 +129,14 @@ public class OpenmrsClassLoader extends URLClassLoader {
 	}
 	
 	/**
-	 * It loads classes from the web container class loader first (parent class loader) and then
-	 * tries module class loaders.
+	 * It attempts to load classes from the module class loaders first and then
+	 * tries the web container class loader (parent class loader).
 	 * 
 	 * @see java.lang.ClassLoader#loadClass(java.lang.String, boolean)
-	 * @should load class from cache second time
-	 * @should not load class from cache if class loader has been disposed
-	 * @should load class from parent first
-	 * @should load class if two module class loaders have same packages
+	 * <strong>Should</strong> load class from cache second time
+	 * <strong>Should</strong> not load class from cache if class loader has been disposed
+	 * <strong>Should</strong> load class from parent first
+	 * <strong>Should</strong> load class if two module class loaders have same packages
 	 */
 	@Override
 	public synchronized Class<?> loadClass(String name, final boolean resolve) throws ClassNotFoundException {
@@ -542,9 +540,7 @@ public class OpenmrsClassLoader extends URLClassLoader {
 									}
 								} else {
 									field.set(null, null);
-									if (log.isDebugEnabled()) {
-										log.debug("Set field " + field.getName() + " to null in class " + clazz.getName());
-									}
+									log.debug("Set field {} to null in class {}", field.getName(), clazz.getName());
 								}
 							}
 							catch (Exception t) {

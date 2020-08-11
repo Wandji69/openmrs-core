@@ -9,18 +9,6 @@
  */
 package org.openmrs.api.impl;
 
-import static org.openmrs.Order.Action.DISCONTINUE;
-import static org.openmrs.Order.Action.REVISE;
-
-import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Calendar;
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
-import java.util.Locale;
-
 import org.apache.commons.lang3.time.DateUtils;
 import org.hibernate.proxy.HibernateProxy;
 import org.openmrs.CareSetting;
@@ -30,6 +18,7 @@ import org.openmrs.DrugOrder;
 import org.openmrs.Encounter;
 import org.openmrs.GlobalProperty;
 import org.openmrs.Order;
+import org.openmrs.Order.FulfillerStatus;
 import org.openmrs.OrderFrequency;
 import org.openmrs.OrderGroup;
 import org.openmrs.OrderType;
@@ -39,20 +28,20 @@ import org.openmrs.TestOrder;
 import org.openmrs.api.APIException;
 import org.openmrs.api.AmbiguousOrderException;
 import org.openmrs.api.CannotDeleteObjectInUseException;
+import org.openmrs.api.CannotStopDiscontinuationOrderException;
+import org.openmrs.api.CannotStopInactiveOrderException;
+import org.openmrs.api.CannotUnvoidOrderException;
 import org.openmrs.api.CannotUpdateObjectInUseException;
+import org.openmrs.api.EditedOrderDoesNotMatchPreviousException;
 import org.openmrs.api.GlobalPropertyListener;
 import org.openmrs.api.MissingRequiredPropertyException;
 import org.openmrs.api.OrderContext;
+import org.openmrs.api.OrderEntryException;
 import org.openmrs.api.OrderNumberGenerator;
 import org.openmrs.api.OrderService;
 import org.openmrs.api.UnchangeableObjectException;
 import org.openmrs.api.context.Context;
 import org.openmrs.api.db.OrderDAO;
-import org.openmrs.api.CannotStopDiscontinuationOrderException;
-import org.openmrs.api.CannotStopInactiveOrderException;
-import org.openmrs.api.CannotUnvoidOrderException;
-import org.openmrs.api.EditedOrderDoesNotMatchPreviousException;
-import org.openmrs.api.OrderEntryException;
 import org.openmrs.order.OrderUtil;
 import org.openmrs.parameter.OrderSearchCriteria;
 import org.openmrs.util.OpenmrsConstants;
@@ -62,6 +51,19 @@ import org.slf4j.LoggerFactory;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+
+import static org.openmrs.Order.Action.DISCONTINUE;
+import static org.openmrs.Order.Action.REVISE;
 
 /**
  * Default implementation of the Order-related services class. This method should not be invoked by
@@ -113,6 +115,12 @@ public class OrderServiceImpl extends BaseOpenmrsService implements OrderService
 		for (Order order : orders) {
 			if (order.getId() == null) {
 				saveOrder(order, null);
+			}
+		}
+		Set<OrderGroup> nestedGroups = orderGroup.getNestedOrderGroups();
+		if (nestedGroups != null) {
+			for (OrderGroup nestedGroup : nestedGroups) {
+				Context.getOrderService().saveOrderGroup(nestedGroup);
 			}
 		}
 		return orderGroup;
@@ -484,13 +492,29 @@ public class OrderServiceImpl extends BaseOpenmrsService implements OrderService
 		return saveOrderInternal(order, null);
 	}
 	
+	@Override
 	public Order updateOrderFulfillerStatus(Order order, Order.FulfillerStatus orderFulfillerStatus, String fullFillerComment) {
-		order.setFulfillerStatus(orderFulfillerStatus);
-		order.setFulfillerComment(fullFillerComment);	
+		return updateOrderFulfillerStatus(order, orderFulfillerStatus, fullFillerComment, null);
+	}
+
+	@Override
+	public Order updateOrderFulfillerStatus(Order order, FulfillerStatus orderFulfillerStatus, String fullFillerComment,
+											String accessionNumber) {
+
+		if (orderFulfillerStatus != null) {
+			order.setFulfillerStatus(orderFulfillerStatus);
+		}
+
+		if (fullFillerComment != null) {
+			order.setFulfillerComment(fullFillerComment);
+		}
+	
+		if (accessionNumber != null) {
+			order.setAccessionNumber(accessionNumber);
+		}
 		
 		return saveOrderInternal(order, null);
 	}
-	
 	
 	/**
 	 * @see org.openmrs.api.OrderService#getOrder(java.lang.Integer)
@@ -1059,4 +1083,5 @@ public class OrderServiceImpl extends BaseOpenmrsService implements OrderService
 	public List<OrderGroup> getOrderGroupsByEncounter(Encounter encounter) throws APIException {
 		return dao.getOrderGroupsByEncounter(encounter);
 	}
+	
 }

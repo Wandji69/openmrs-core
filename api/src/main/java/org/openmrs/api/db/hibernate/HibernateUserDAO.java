@@ -77,6 +77,14 @@ public class HibernateUserDAO implements UserDAO {
 		sessionFactory.getCurrentSession().saveOrUpdate(user);
 		
 		if (isNewUser && password != null) {
+			/* In OpenMRS, we are using generation strategy as native which will convert to IDENTITY 
+			 for MySQL and SEQUENCE for PostgreSQL. When using IDENTITY strategy, hibernate directly 
+			 issues insert statements where as with  SEQUENCE strategy hibernate only increments 
+			 sequences and issues insert on session flush ( batching is possible) . 
+			 PostgreSQL behaves differently than MySQL because it makes use of SEQUENCE strategy. 
+			*/
+			sessionFactory.getCurrentSession().flush();
+			
 			//update the new user with the password
 			String salt = Security.getRandomToken();
 			String hashedPassword = Security.encodeString(password + salt);
@@ -95,7 +103,7 @@ public class HibernateUserDAO implements UserDAO {
 	@SuppressWarnings("unchecked")
 	public User getUserByUsername(String username) {
 		Query query = sessionFactory.getCurrentSession().createQuery(
-		    "from User u where u.retired = '0' and (u.username = ? or u.systemId = ?)");
+		    "from User u where u.retired = '0' and (u.username = ?0 or u.systemId = ?1)");
 		query.setString(0, username);
 		query.setString(1, username);
 		List<User> users = query.list();
@@ -294,7 +302,7 @@ public class HibernateUserDAO implements UserDAO {
 		
 		log.debug("updating password");
 		//update the user with the new password
-		String salt = getLoginCredential(u).getSalt();
+		String salt = Security.getRandomToken();
 		String newHashedPassword = Security.encodeString(pw + salt);
 		
 		updateUserPassword(newHashedPassword, salt, authUser.getUserId(), new Date(), u.getUserId());
@@ -352,10 +360,10 @@ public class HibernateUserDAO implements UserDAO {
 			throw new DAOException("Passwords don't match");
 		}
 		
-		log.info("updating password for " + u.getUsername());
+		log.info("updating password for {}", u.getUsername());
 		
 		// update the user with the new password
-		String salt = getLoginCredential(u).getSalt();
+		String salt = Security.getRandomToken();
 		String newHashedPassword = Security.encodeString(pw2 + salt);
 		updateUserPassword(newHashedPassword, salt, u.getUserId(), new Date(), u.getUserId());
 	}

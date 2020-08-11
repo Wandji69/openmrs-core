@@ -52,6 +52,7 @@
         <mapping resource="org/openmrs/api/db/hibernate/FormResource.hbm.xml" />
 		<mapping resource="org/openmrs/api/db/hibernate/GlobalProperty.hbm.xml" />
 		<mapping resource="org/openmrs/api/db/hibernate/Obs.hbm.xml" />
+		<mapping resource="org/openmrs/api/db/hibernate/Person.hbm.xml" />
 		<mapping resource="org/openmrs/api/db/hibernate/PersonAttribute.hbm.xml" />
 		<mapping resource="org/openmrs/api/db/hibernate/PersonAttributeType.hbm.xml" />
 		<mapping resource="org/openmrs/api/db/hibernate/PersonAddress.hbm.xml" />
@@ -61,6 +62,7 @@
 		<mapping resource="org/openmrs/api/db/hibernate/LoginCredential.hbm.xml" />
 		<mapping resource="org/openmrs/api/db/hibernate/Privilege.hbm.xml" />
 		<mapping resource="org/openmrs/api/db/hibernate/Role.hbm.xml" />
+		<mapping resource="org/openmrs/api/db/hibernate/Patient.hbm.xml" />
 		<mapping resource="org/openmrs/api/db/hibernate/PatientIdentifier.hbm.xml" />
 		<mapping resource="org/openmrs/api/db/hibernate/PatientIdentifierType.hbm.xml" />
                 <mapping resource="org/openmrs/api/db/hibernate/PatientProgram.hbm.xml" />
@@ -71,6 +73,8 @@
 		<mapping resource="org/openmrs/api/db/hibernate/Order.hbm.xml" />
 		<mapping resource="org/openmrs/api/db/hibernate/OrderSet.hbm.xml" />
 		<mapping resource="org/openmrs/api/db/hibernate/OrderSetMember.hbm.xml" />
+		<mapping resource="org/openmrs/api/db/hibernate/OrderSetAttributeType.hbm.xml" />
+		<mapping resource="org/openmrs/api/db/hibernate/OrderSetAttribute.hbm.xml" />
 		<mapping resource="org/openmrs/api/db/hibernate/OrderGroup.hbm.xml" />
 		<mapping resource="org/openmrs/api/db/hibernate/CareSetting.hbm.xml" />
 		<mapping resource="org/openmrs/api/db/hibernate/Location.hbm.xml" />
