@@ -185,7 +185,7 @@ public class Context {
 	/**
 	 * Spring init method that sets the authentication scheme.
 	 */
-	static private void setAuthenticationScheme() {
+	private static void setAuthenticationScheme() {
 
 		authenticationScheme = new UsernamePasswordAuthenticationScheme();
 
@@ -559,7 +559,7 @@ public class Context {
 	public static ProgramWorkflowService getProgramWorkflowService() {
 		return getServiceContext().getProgramWorkflowService();
 	}
-
+	
 	/**
 	 * Get the message service.
 	 *
