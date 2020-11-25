@@ -128,12 +128,7 @@ public class ModifyColumnGenerator extends AbstractSqlGenerator<ModifyColumnStat
 	 * @return true/false whether extra information can be included
 	 */
 	boolean supportsExtraMetaData(Database database) {
-		if (database instanceof MSSQLDatabase
-			|| database instanceof MySQLDatabase) {
-			return true;
-		}
-
-		return false;
+		return database instanceof MSSQLDatabase || database instanceof MySQLDatabase;
 	}
 
 	/**
@@ -192,11 +187,9 @@ public class ModifyColumnGenerator extends AbstractSqlGenerator<ModifyColumnStat
 	String getDefaultClause(ColumnConfig column, Database database) {
 		String clause = "";
 		String defaultValue = column.getDefaultValue();
-		if (defaultValue != null) {
-			if (database instanceof MySQLDatabase) {
-				clause += " DEFAULT " + DataTypeFactory.getInstance().fromObject(defaultValue, database)
-					.objectToSql(defaultValue, database);
-			}
+		if (defaultValue != null && database instanceof MySQLDatabase) {
+			clause += " DEFAULT " + DataTypeFactory.getInstance().fromObject(defaultValue, database)
+				.objectToSql(defaultValue, database);
 		}
 		return clause;
 	}

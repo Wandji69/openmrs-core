@@ -494,6 +494,16 @@ public class OpenmrsUtil {
 		applyLogLevels();
 	}
 	
+	public static MemoryAppender getMemoryAppender() {
+		MemoryAppender memoryAppender = ((LoggerContext) LogManager.getContext()).getConfiguration().getAppender("MEMORY_APPENDER");
+		if (memoryAppender != null) {
+			if (!memoryAppender.isStarted()) {
+				memoryAppender.start();
+			}
+		}
+		return memoryAppender;
+	}
+	
 	/**
 	 * Set the org.openmrs log4j logger's level if global property log.level.openmrs (
 	 * OpenmrsConstants.GLOBAL_PROPERTY_LOG_LEVEL ) exists. Valid values for global property are
@@ -950,9 +960,7 @@ public class OpenmrsUtil {
 			throw new IOException("Could not delete directory '" + dir.getAbsolutePath() + "' (not a directory)");
 		}
 		
-		if (log.isDebugEnabled()) {
-			log.debug("Deleting directory " + dir.getAbsolutePath());
-		}
+		log.debug("Deleting directory {}", dir.getAbsolutePath());
 		
 		File[] fileList = dir.listFiles();
 		if (fileList == null) {
@@ -1091,8 +1099,10 @@ public class OpenmrsUtil {
 					filepath = OpenmrsConstants.APPLICATION_DATA_DIRECTORY_FALLBACK_UNIX + File.separator + openmrsDir;
 				}
 			} else {
-				filepath = System.getProperty("user.home") + File.separator + "Application Data" + File.separator
-				        + "OpenMRS";
+				filepath = System.getProperty("user.home") + File.separator + "Application Data" + File.separator + "OpenMRS";
+				if (!new File(filepath).exists()) {
+					filepath = System.getenv("appdata") + File.separator + "OpenMRS";
+				}
 				if (!canWrite(new File(filepath))) {
 					log.warn("Unable to write to users home dir, fallback to: "
 					        + OpenmrsConstants.APPLICATION_DATA_DIRECTORY_FALLBACK_WIN);

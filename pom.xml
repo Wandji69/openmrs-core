@@ -296,7 +296,7 @@
 			<dependency>
 				<groupId>org.liquibase</groupId>
 				<artifactId>liquibase-core</artifactId>
-				<version>3.10.2</version>
+				<version>3.10.3</version>
 				<exclusions>
 					<exclusion>
 						<groupId>ch.qos.logback</groupId>
@@ -420,7 +420,7 @@
 			<dependency>
 				<groupId>mysql</groupId>
 				<artifactId>mysql-connector-java</artifactId>
-				<version>8.0.21</version>
+				<version>8.0.22</version>
 				<scope>runtime</scope>
 			</dependency>
 			<dependency>
@@ -431,7 +431,7 @@
 			<dependency>
 				<groupId>org.postgresql</groupId>
 				<artifactId>postgresql</artifactId>
-				<version>42.2.16</version>
+				<version>42.2.18</version>
 				<scope>runtime</scope>
 			</dependency>
 			<dependency>
@@ -478,7 +478,7 @@
 			<dependency>
 				<groupId>junit</groupId>
 				<artifactId>junit</artifactId>
-				<version>4.13</version>
+				<version>4.13.1</version>
 			</dependency>
 			<dependency>
 				<groupId>org.junit.jupiter</groupId>
@@ -514,12 +514,12 @@
 			<dependency>
 				<groupId>org.powermock</groupId>
 				<artifactId>powermock-module-junit4</artifactId>
-				<version>2.0.7</version>
+				<version>2.0.9</version>
 			</dependency>
 			<dependency>
 				<groupId>org.powermock</groupId>
 				<artifactId>powermock-api-mockito2</artifactId>
-				<version>2.0.7</version>
+				<version>2.0.9</version>
 			</dependency>
 			<dependency>
 				<groupId>org.hamcrest</groupId>
@@ -574,7 +574,7 @@
 			<dependency>
 			  <groupId>joda-time</groupId>
 			  <artifactId>joda-time</artifactId>
-			  <version>2.10.6</version>
+			  <version>2.10.8</version>
 			</dependency>
 			<dependency>
 			    <groupId>javax.annotation</groupId>
@@ -589,12 +589,12 @@
 			<dependency>
 			    <groupId>jakarta.xml.bind</groupId>
 			    <artifactId>jakarta.xml.bind-api</artifactId>
-			    <version>3.0.0-RC3</version>
+			    <version>3.0.0</version>
 			</dependency>
 			<dependency>
 				<groupId>com.sun.xml.bind</groupId>
 				<artifactId>jaxb-impl</artifactId>
-			    <version>3.0.0-M4</version>
+			    <version>3.0.0-M5</version>
 			</dependency>
 		</dependencies>
 	</dependencyManagement>
@@ -1143,17 +1143,17 @@
 			 For instance, our version of Lucene is tied to the version of Hibernate Search. Similarly, our
 			 version of Hibernate Search must be compatible with the version of Hibernate and Hibernate must
 			 be compatible with our version of Spring. -->
-		<springVersion>5.2.9.RELEASE</springVersion>
-		<hibernateVersion>5.4.21.Final</hibernateVersion>
-		<hibernateSearchVersion>5.11.5.Final</hibernateSearchVersion>
+		<springVersion>5.3.1</springVersion>
+		<hibernateVersion>5.4.24.Final</hibernateVersion>
+		<hibernateSearchVersion>5.11.7.Final</hibernateSearchVersion>
 		<luceneVersion>5.5.5</luceneVersion>
 		<aspectjVersion>1.9.6</aspectjVersion>
-		<jacksonVersion>2.11.2</jacksonVersion>
+		<jacksonVersion>2.11.3</jacksonVersion>
 		<junitVersion>5.7.0</junitVersion>
-		<mockitoVersion>3.5.11</mockitoVersion>
+		<mockitoVersion>3.6.28</mockitoVersion>
 
 		<slf4jVersion> 1.7.30</slf4jVersion>
-		<log4jVersion>2.13.3</log4jVersion>
+		<log4jVersion>2.14.0</log4jVersion>
 
 		<customArgLineForTesting />
 
