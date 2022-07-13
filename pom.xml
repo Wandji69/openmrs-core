@@ -895,7 +895,7 @@
 			</plugin>
 			<plugin>
 				<artifactId>maven-assembly-plugin</artifactId>
-				<version>3.3.0</version>
+				<version>3.4.1</version>
 				<configuration>
 					<descriptorRefs>
 						<descriptorRef>project</descriptorRef>
@@ -1119,7 +1119,7 @@
 			 version of Hibernate Search must be compatible with the version of Hibernate and Hibernate must
 			 be compatible with our version of Spring. -->
 		<springVersion>5.3.21</springVersion>
-		<hibernateVersion>5.6.9.Final</hibernateVersion>
+		<hibernateVersion>5.6.10.Final</hibernateVersion>
 		<hibernateSearchVersion>5.11.10.Final</hibernateSearchVersion>
 		<luceneVersion>5.5.5</luceneVersion>
 		<aspectjVersion>1.9.9.1</aspectjVersion>
@@ -1129,7 +1129,7 @@
 		<hamcrestVersion>2.2</hamcrestVersion>
 
 		<slf4jVersion>1.7.36</slf4jVersion>
-		<log4jVersion>2.17.2</log4jVersion>
+		<log4jVersion>2.18.0</log4jVersion>
 		<owaspCsrfGuardVersion>4.1.4</owaspCsrfGuardVersion>
 
 		<customArgLineForTesting />

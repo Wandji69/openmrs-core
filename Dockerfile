@@ -62,7 +62,7 @@ WORKDIR /app/webapp
 CMD ["mvn", "jetty:run", "-o"]
 
 ### Production Stage
-FROM tomcat:9.0-jdk8-adoptopenjdk-hotspot
+FROM tomcat:8.5-jdk8-adoptopenjdk-hotspot
 
 RUN apt-get update && apt-get install -y zip dumb-init \
     && apt-get clean  \
@@ -71,7 +71,7 @@ RUN apt-get update && apt-get install -y zip dumb-init \
 RUN groupadd -r openmrs  \
     && useradd --no-log-init -r -g openmrs openmrs  \
     && chown -R openmrs $CATALINA_HOME  \
-    && mkdir -p /openmrs  \
+    && mkdir -p /openmrs/data  \
     && chown -R openmrs /openmrs 
 
 # Copy in the start-up scripts
