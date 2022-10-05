@@ -15,6 +15,9 @@ WORKDIR /app
 ENV DEPENDENCY_PLUGIN="org.apache.maven.plugins:maven-dependency-plugin:3.3.0"
 ENV MVN_ARGS_SETTINGS="-s /usr/share/maven/ref/settings-docker.xml"
 
+# Setup SDK
+RUN mvn org.openmrs.maven.plugins:openmrs-sdk-maven-plugin:setup-sdk -DbatchAnswers=n -B $MVN_ARGS_SETTINGS
+
 # Copy poms to resolve dependencies
 COPY pom.xml .
 COPY liquibase/pom.xml ./liquibase/
@@ -36,6 +39,9 @@ ARG MVN_ARGS='install'
 # Build modules individually to benefit from caching
 COPY checkstyle.xml checkstyle-suppressions.xml CONTRIBUTING.md findbugs-include.xml LICENSE license-header.txt \
  NOTICE.md README.md ruleset.xml SECURITY.md ./
+
+# build the parent project first
+RUN mvn --non-recursive $MVN_ARGS_SETTINGS $MVN_ARGS
 
 COPY liquibase ./liquibase/
 RUN mvn -pl liquibase $MVN_ARGS_SETTINGS $MVN_ARGS
@@ -71,7 +77,9 @@ RUN apt-get update && apt-get install -y zip dumb-init \
 RUN groupadd -r openmrs  \
     && useradd --no-log-init -r -g openmrs openmrs  \
     && chown -R openmrs $CATALINA_HOME  \
-    && mkdir -p /openmrs/data  \
+    && mkdir -p /openmrs/data/modules \
+    && mkdir -p /openmrs/data/owa  \
+    && mkdir -p /openmrs/data/configuration  \
     && chown -R openmrs /openmrs 
 
 # Copy in the start-up scripts
@@ -125,7 +133,8 @@ ENV OMRS_CONFIG_CONNECTION_DATABASE="openmrs"
 ENV OMRS_WEBAPP_NAME="openmrs"
 
 RUN sed -i '/Connector port="8080"/a URIEncoding="UTF-8" relaxedPathChars="[]|" relaxedQueryChars="[]|{}^&#x5c;&#x60;&quot;&lt;&gt;"' /usr/local/tomcat/conf/server.xml
-    
+
+COPY --from=dev /app/LICENSE LICENSE
 # Copy the app
 COPY --from=dev /app/webapp/target/openmrs.war /openmrs/distribution/openmrs_core/openmrs.war
 
