@@ -826,10 +826,18 @@ public abstract class BaseContextSensitiveTest {
 			//Do the actual update/insert:
 			//insert new rows, update existing rows, and leave others alone
 			DatabaseOperation.REFRESH.execute(dbUnitConn, dataset);
+			
+			if (isPostgreSQL()) {
+				Context.getAdministrationService().updatePostgresSequence();
+			}
 		}
 		catch (DatabaseUnitException | SQLException e) {
 			throw new DatabaseUnitRuntimeException(e);
 		}
+	}
+	
+	protected boolean isPostgreSQL() {
+		return "postgres".equals(System.getProperty("database"));
 	}
 	
 	protected IDatabaseConnection setupDatabaseConnection(Connection connection) throws DatabaseUnitException {
@@ -854,7 +862,7 @@ public abstract class BaseContextSensitiveTest {
 	 * 
 	 * @throws Exception
 	 */
-	public void deleteAllData() {
+	public synchronized void deleteAllData() {
 		try {
 			Context.clearSession();
 			
@@ -867,7 +875,7 @@ public abstract class BaseContextSensitiveTest {
 			String databaseName = System.getProperty("databaseName");
 			
 			// find all the tables for this connection
-			ResultSet resultSet = connection.getMetaData().getTables(databaseName, "PUBLIC", "%", null);
+			ResultSet resultSet = connection.getMetaData().getTables(databaseName, getSchemaPattern(), "%", new String[] {"TABLE"});
 			DefaultDataSet dataset = new DefaultDataSet();
 			while (resultSet.next()) {
 				String tableName = resultSet.getString(3);
@@ -887,6 +895,15 @@ public abstract class BaseContextSensitiveTest {
 		}
 		catch (SQLException | DatabaseUnitException e) {
 			throw new DatabaseUnitRuntimeException(e);
+		}
+	}
+	
+	private String getSchemaPattern() {
+		if (useInMemoryDatabase()) {
+			return "PUBLIC";
+		}
+		else {
+			return "public";
 		}
 	}
 	
@@ -992,7 +1009,7 @@ public abstract class BaseContextSensitiveTest {
 	 * @throws Exception
 	 */
 	@AfterAll
-	public static void closeSessionAfterEachClass() throws Exception {
+	public static synchronized void closeSessionAfterEachClass() throws Exception {
 		//Some tests add data via executeDataset()
 		//We need to delete it in order not to interfere with others
 		if (instance != null) {

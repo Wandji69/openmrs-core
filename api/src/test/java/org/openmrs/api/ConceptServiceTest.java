@@ -2862,7 +2862,7 @@ public class ConceptServiceTest extends BaseContextSensitiveTest {
 		allConcepts = conceptService.getAllConcepts("dateCreated", false, true);
 		
 		assertEquals(38, allConcepts.size());
-		assertEquals(23, allConcepts.get(0).getConceptId().intValue());
+		assertEquals(27, allConcepts.get(0).getConceptId().intValue());
 		assertEquals(88, allConcepts.get(allConcepts.size() - 1).getConceptId().intValue());
 	}
 	
