@@ -61,6 +61,8 @@ public class HibernateContextDAO implements ContextDAO {
 	
 	private static final Logger log = LoggerFactory.getLogger(HibernateContextDAO.class);
 	
+	private static final Long DEFAULT_UNLOCK_ACCOUNT_WAITING_TIME = TimeUnit.MILLISECONDS.convert(5L, TimeUnit.MINUTES);
+	
 	/**
 	 * Hibernate session factory
 	 */
@@ -123,11 +125,11 @@ public class HibernateContextDAO implements ContextDAO {
 			log.debug("Candidate user id: {}", candidateUser.getUserId());
 
 			String lockoutTimeString = candidateUser.getUserProperty(OpenmrsConstants.USER_PROPERTY_LOCKOUT_TIMESTAMP, null);
-			long lockoutTime = -1;
-			if (StringUtils.isNotBlank(lockoutTimeString) && !"0".equals(lockoutTimeString)) {
+			Long lockoutTime = null;
+			if (lockoutTimeString != null && !"0".equals(lockoutTimeString)) {
 				try {
 					// putting this in a try/catch in case the admin decided to put junk into the property
-					lockoutTime = Long.parseLong(lockoutTimeString);
+					lockoutTime = Long.valueOf(lockoutTimeString);
 				}
 				catch (NumberFormatException e) {
 					log.warn("bad value stored in {} user property: {}", OpenmrsConstants.USER_PROPERTY_LOCKOUT_TIMESTAMP,
@@ -223,6 +225,28 @@ public class HibernateContextDAO implements ContextDAO {
 		// message regardless of username/pw combo entered
 		log.info("Failed login attempt (login={}) - {}", login, errorMsg);
 		throw new ContextAuthenticationException(errorMsg);
+	}
+	
+	private Long getUnlockTimeMs() {
+		String unlockTimeGPValue = Context.getAdministrationService().getGlobalProperty(
+				OpenmrsConstants.GP_UNLOCK_ACCOUNT_WAITING_TIME);
+		if (StringUtils.isNotBlank(unlockTimeGPValue)) {
+			return convertUnlockAccountWaitingTimeGP(unlockTimeGPValue);
+		}
+		else {
+			return DEFAULT_UNLOCK_ACCOUNT_WAITING_TIME;
+		}
+	}
+	
+	private Long convertUnlockAccountWaitingTimeGP(String waitingTime) {
+		try {
+			return TimeUnit.MILLISECONDS.convert(Long.valueOf(waitingTime), TimeUnit.MINUTES);
+		} catch (Exception ex) {
+			log.error("Unable to convert the global property "
+					+ OpenmrsConstants.GP_UNLOCK_ACCOUNT_WAITING_TIME
+					+ "to a valid Long. Using default value of 5");
+			return DEFAULT_UNLOCK_ACCOUNT_WAITING_TIME;
+		}
 	}
 	
 	/**
